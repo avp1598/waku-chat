@@ -16,7 +16,7 @@ const ChatMessage = new protobuf.Type("ChatMessage")
   .add(new protobuf.Field("sender", 2, "string"))
   .add(new protobuf.Field("message", 3, "string"));
 
-const contentTopic = "/tribes/v1/chat/proto";
+const contentTopic = "/poops/1/message/proto";
 
 function App() {
   const [status, setStatus] = useState("disconnected");
@@ -35,7 +35,7 @@ function App() {
           peerDiscovery: [
             bootstrap({
               list: [
-                "/ip4/0.0.0.0/tcp/60001/ws/p2p/16Uiu2HAkxa2u8HqeUcqeKQeqEphDbkosSDqkpPk8ffNukroZLtZc",
+                "/ip4/0.0.0.0/tcp/60001/ws/p2p/16Uiu2HAm2y7so3rBo6vNF5X5e31oDx9XYUdag4deiXK7kRoHXuxE",
               ],
             }),
           ],
@@ -45,8 +45,8 @@ function App() {
       setStatus("starting");
       await node.start();
       setStatus("connecting");
-      await waitForRemotePeer(node, [Protocols.LightPush]);
 
+      await waitForRemotePeer(node, [Protocols.LightPush, Protocols.Filter]);
       setStatus("connected");
 
       const localPeerId = node.libp2p.peerId.toString();
@@ -56,17 +56,16 @@ function App() {
       const remotePeerIds = remotePeers.map((peer) => peer.id.toString());
       setRemotePeerIds(remotePeerIds);
 
-      // const decoder = createDecoder(contentTopic);
+      const decoder = createDecoder(contentTopic);
 
-      // const subscription = await node.filter.createSubscription();
+      const subscription = await node.filter.createSubscription();
 
-      // await subscription.subscribe([decoder], (wakuMessage) => {
-      //   if (!wakuMessage.payload) return;
-      //   // Render the messageObj as desired in your application
-      //   const messageObj = ChatMessage.decode(wakuMessage.payload);
-      //   console.log({ messageObj });
-      //   setMessages((messages) => [...messages, messageObj]);
-      // });
+      await subscription.subscribe([decoder], (wakuMessage) => {
+        if (!wakuMessage.payload) return;
+        // Render the messageObj as desired in your application
+        const messageObj = ChatMessage.decode(wakuMessage.payload);
+        setMessages((messages) => [...messages, messageObj]);
+      });
     })();
   }, []);
 
@@ -138,7 +137,6 @@ function App() {
 
               const serialisedMessage =
                 ChatMessage.encode(protoMessage).finish();
-
               await node?.lightPush.send(encoder, {
                 payload: serialisedMessage,
               });
